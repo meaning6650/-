@@ -7,6 +7,8 @@
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -213,6 +215,21 @@ tr:hover td{background:#fafafa}
 </head>
 <body>
 <div id="root"></div>
+<script>
+// ── Firebase 초기화 ──
+const firebaseConfig = {
+  apiKey: "AIzaSyCReSEehmk_95SWlu3Fds1wCGgAbEIyctU",
+  authDomain: "research-admin-4f8be.firebaseapp.com",
+  databaseURL: "https://research-admin-4f8be-default-rtdb.firebaseio.com",
+  projectId: "research-admin-4f8be",
+  storageBucket: "research-admin-4f8be.firebasestorage.app",
+  messagingSenderId: "1035706181668",
+  appId: "1:1035706181668:web:309499da2730960d8910b1",
+  measurementId: "G-TF0816B4Z1"
+};
+firebase.initializeApp(firebaseConfig);
+const DB_REF = firebase.database().ref('rsch_admin');
+</script>
 <script type="text/babel">
 const {useState,useEffect,useMemo,useRef,useCallback}=React;
 const P='#378ADD';
@@ -249,8 +266,7 @@ function genChecklist(type,endDate,isPublic,privExpiry){
   return base;
 }
 
-/* ── storage ── */
-const KEY='rsch_admin_v1';
+/* ── default users / Firebase helpers ── */
 const DEFAULT_USERS=[
   {id:'default_khepi01',name:'건강증진연구소',role:'',username:'khepi01',password:'khepi01!'},
   {id:'default_khepi02',name:'건강정책부',role:'',username:'khepi02',password:'khepi02!'},
@@ -283,18 +299,25 @@ const DEFAULT_USERS=[
   {id:'default_khepi29',name:'khepi29',role:'',username:'khepi29',password:'khepi29!'},
   {id:'default_khepi30',name:'khepi30',role:'',username:'khepi30',password:'khepi30!'},
 ];
-function load(){
-  try{
-    const r=localStorage.getItem(KEY);
-    if(r){
-      const d=JSON.parse(r);
-      if(!d.users||d.users.length===0)d.users=DEFAULT_USERS;
-      return d;
-    }
-  }catch(e){}
-  return{adminPwd:'admin1234',projects:[],users:DEFAULT_USERS};
+/* Firebase로 데이터를 저장 */
+function fbSave(d){ DB_REF.set(d); }
+
+/* Firebase 읽기 시 배열/객체 정규화 (Firebase는 배열을 객체로 변환할 수 있음) */
+function normalizeData(d){
+  if(!d)return{adminPwd:'admin1234',projects:[],users:DEFAULT_USERS};
+  const toArr=v=>v?(Array.isArray(v)?v:Object.values(v)):[];
+  const projects=toArr(d.projects).map(p=>({
+    ...p,
+    checklist:toArr(p.checklist),
+    assignees:toArr(p.assignees),
+  }));
+  const users=toArr(d.users);
+  return{
+    adminPwd:d.adminPwd||'admin1234',
+    projects,
+    users:users.length?users:DEFAULT_USERS,
+  };
 }
-function save(d){localStorage.setItem(KEY,JSON.stringify(d))}
 
 /* ── Modal ── */
 function Modal({title,onClose,children,lg}){
@@ -332,7 +355,7 @@ function PwdInput({value,onChange,placeholder,autoFocus,id}){
 }
 
 /* ─────────── LOGIN ─────────── */
-function LoginScreen({onLogin}){
+function LoginScreen({onLogin,data}){
   const [tab,setTab]=useState('admin');
   const [apwd,setApwd]=useState('');
   const [uid2,setUid2]=useState('');
@@ -340,12 +363,11 @@ function LoginScreen({onLogin}){
   const [err,setErr]=useState('');
   function submit(e){
     e.preventDefault();setErr('');
-    const d=load();
     if(tab==='admin'){
-      if(apwd===d.adminPwd)onLogin({type:'admin'});
+      if(apwd===data.adminPwd)onLogin({type:'admin'});
       else setErr('비밀번호가 올바르지 않습니다.');
     } else {
-      const u=d.users.find(u=>u.username===uid2&&u.password===upwd);
+      const u=data.users.find(u=>u.username===uid2&&u.password===upwd);
       if(u)onLogin({type:'user',user:u});
       else setErr('아이디 또는 비밀번호가 올바르지 않습니다.');
     }
@@ -732,7 +754,7 @@ function SettingsPanel({data,onChange}){
 }
 
 /* ─────────── EXPORT ─────────── */
-function ExportPanel({data}){
+function ExportPanel({data,onChange}){
   function csv(){
     const rows=[['과제명','유형','시작일','종료일','단계명','필수/권고','마감일','완료여부','완료일/결과','담당자',
       '평가위원1 이름','평가위원1 점수','평가위원2 이름','평가위원2 점수','평가위원3 이름','평가위원3 점수','평균점수','평가등급']];
@@ -771,7 +793,7 @@ function ExportPanel({data}){
       try{
         const d=JSON.parse(ev.target.result);
         if(!d.projects||!d.users){alert('올바르지 않은 파일 형식입니다.');return}
-        if(confirm('현재 데이터를 불러온 데이터로 교체하시겠습니까?')){save(d);alert('복원되었습니다. 페이지를 새로고침합니다.');location.reload();}
+        if(confirm('현재 데이터를 불러온 데이터로 교체하시겠습니까?')){onChange(d);alert('복원되었습니다. Firebase에 저장되었습니다.');}
       }catch{alert('파일 읽기 오류');}
     };
     r.readAsText(f);e.target.value='';
@@ -954,7 +976,7 @@ function AdminDash({data,onChange,onLogout}){
           <div className="card-body"><CalendarView projects={data.projects} isAdmin={true}/></div>
         </div>}
         {view==='set'&&<div><div className="page-title">설정</div><SettingsPanel data={data} onChange={onChange}/></div>}
-        {view==='exp'&&<div><div className="page-title">데이터 내보내기</div><ExportPanel data={data}/></div>}
+        {view==='exp'&&<div><div className="page-title">데이터 내보내기</div><ExportPanel data={data} onChange={onChange}/></div>}
       </div>
     </div>
     {projModal?.t==='add'&&<ProjectForm users={data.users} onSave={addProj} onClose={()=>setProjModal(null)}/>}
@@ -1051,15 +1073,33 @@ function UserDash({data,user,onChange,onLogout}){
 /* ─────────── APP ROOT ─────────── */
 function App(){
   const [session,setSession]=useState(null);
-  const [data,setData]=useState(()=>load());
+  const [data,setData]=useState(null);
 
-  function chg(d){setData(d);save(d)}
-  function login(s){setSession(s);setData(load())}
-  function logout(){setSession(null)}
+  useEffect(()=>{
+    DB_REF.on('value',snap=>{
+      const raw=snap.val();
+      const d=normalizeData(raw);
+      if(!raw) DB_REF.set(d);
+      setData(d);
+    });
+    return ()=>DB_REF.off('value');
+  },[]);
 
-  if(!session)return <LoginScreen onLogin={login}/>;
+  function chg(d){ DB_REF.set(d); }
+  function login(s){ setSession(s); }
+  function logout(){ setSession(null); }
+
+  if(!data)return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:12,color:'#888'}}>
+      <i className="ti ti-loader-2" style={{fontSize:36,animation:'spin 1s linear infinite'}}/>
+      <div style={{fontSize:14}}>Firebase 연결 중...</div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+  if(!session)return <LoginScreen onLogin={login} data={data}/>;
   if(session.type==='admin')return <AdminDash data={data} onChange={chg} onLogout={logout}/>;
-  return <UserDash data={data} user={session.user} onChange={chg} onLogout={logout}/>;
+  const curUser=data.users.find(u=>u.id===session.user.id)||session.user;
+  return <UserDash data={data} user={curUser} onChange={chg} onLogout={logout}/>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
