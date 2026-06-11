@@ -244,6 +244,14 @@ function ddcls(n){if(n===null)return null;if(n<=1)return'dd-red';if(n<=3)return'
 function grade(a){if(a>=80)return'매우우수';if(a>=70)return'우수';if(a>=60)return'보통';return'부적격'}
 function gradeColor(g){return g==='매우우수'?'#3B6D11':g==='우수'?P:g==='보통'?'#854F0B':'#A32D2D'}
 function progress(cl){if(!cl||!cl.length)return 0;const a=cl.filter(s=>!s.subStep||s.subStep===0||true);if(!a.length)return 0;return Math.round(a.filter(s=>s.completed||s.skipped).length/a.length*100)}
+function sortByCode(a,b){
+  if(!a.code&&!b.code)return 0;if(!a.code)return 1;if(!b.code)return -1;
+  const pa=a.code.split('-');const pb=b.code.split('-');
+  if(pa[0]!==pb[0])return pa[0].localeCompare(pb[0]);
+  const ya=parseInt(pa[1])||0;const yb=parseInt(pb[1])||0;
+  if(ya!==yb)return ya-yb;
+  return(parseInt(pa[2])||0)-(parseInt(pb[2])||0);
+}
 
 function genChecklist(type,endDate,isPublic,privExpiry){
   if(type==='수탁연구')return[];
@@ -491,26 +499,62 @@ function DueDateModal({step,onOk,onClose}){
 /* ─────────── PROJECT FORM ─────────── */
 function ProjectForm({proj,users,onSave,onClose}){
   const isEdit=!!proj;
-  const [f,setF]=useState(proj?{name:proj.name,type:proj.type,start:proj.start,end:proj.end,pub:proj.pub,privExpiry:proj.privExpiry||'',assignees:proj.assignees||[]}:{name:'',type:'내부연구',start:'',end:'',pub:true,privExpiry:'',assignees:[]});
+  const TYPE_MAP={A:'내부연구',B:'위탁연구',C:'수탁연구'};
+  const CODE_REV={'내부연구':'A','위탁연구':'B','수탁연구':'C'};
+  let initCT='',initCY='',initCS='';
+  if(proj?.code){const cp=proj.code.split('-');initCT=cp[0]||'';initCY=cp[1]||'';initCS=cp[2]||'';}
+  else if(proj?.type){initCT=CODE_REV[proj.type]||'';}
+  const [f,setF]=useState(proj?{
+    codeType:initCT,codeYear:initCY,codeSeq:initCS,
+    name:proj.name,type:proj.type,start:proj.start,end:proj.end,
+    pub:proj.pub,privExpiry:proj.privExpiry||'',assignees:proj.assignees||[]
+  }:{codeType:'',codeYear:'',codeSeq:'',name:'',type:'내부연구',start:'',end:'',pub:true,privExpiry:'',assignees:[]});
+  function selCode(t){setF(p=>({...p,codeType:t,type:TYPE_MAP[t]}))}
   function togA(id){setF(p=>({...p,assignees:p.assignees.includes(id)?p.assignees.filter(a=>a!==id):[...p.assignees,id]}))}
-  function ok(){if(!f.name.trim()||!f.start||!f.end)return;onSave(f)}
+  function chkDate(v,field){if(!v){setF(p=>({...p,[field]:v}));return;}if((v.split('-')[0]||'').length<=4)setF(p=>({...p,[field]:v}));}
+  function ok(){if(!f.name.trim()||!f.start||!f.end)return;const code=f.codeType&&f.codeYear&&f.codeSeq?`${f.codeType}-${f.codeYear}-${f.codeSeq}`:'';onSave({...f,code});}
   return <Modal title={isEdit?'과제 수정':'과제 등록'} onClose={onClose} lg>
-    <div className="fg"><label className="flabel">계약건명 (과제명) *</label><input type="text" className="finput" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="과제명 입력"/></div>
-    <div className="fg"><label className="flabel">과제 유형</label>
-      <select className="fselect" value={f.type} onChange={e=>setF({...f,type:e.target.value})}>
-        <option>내부연구</option><option>위탁연구</option><option>수탁연구</option>
-      </select>
+    <div className="fg">
+      <label className="flabel">과제코드</label>
+      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:4}}>
+          {['A','B','C'].map(t=><button key={t} type="button"
+            title={TYPE_MAP[t]}
+            style={{width:38,height:38,borderRadius:8,border:'.5px solid',
+              borderColor:f.codeType===t?P:'#ddd',
+              background:f.codeType===t?P:'#fff',
+              color:f.codeType===t?'#fff':'#888',
+              fontWeight:700,fontSize:14,cursor:'pointer',fontFamily:'inherit',
+              flexShrink:0,transition:'all .12s'}}
+            onClick={()=>selCode(t)}>{t}</button>)}
+        </div>
+        <span style={{color:'#ccc',fontSize:16}}>-</span>
+        <input type="text" className="finput" placeholder="연도" maxLength={4} inputMode="numeric"
+          style={{width:76}}
+          value={f.codeYear}
+          onChange={e=>setF(p=>({...p,codeYear:e.target.value.replace(/\D/g,'').slice(0,4)}))}
+        />
+        <span style={{color:'#ccc',fontSize:16}}>-</span>
+        <input type="text" className="finput" placeholder="순번" inputMode="numeric"
+          style={{width:68}}
+          value={f.codeSeq}
+          onChange={e=>setF(p=>({...p,codeSeq:e.target.value.replace(/\D/g,'')}))}
+        />
+        {f.codeType&&f.codeYear&&f.codeSeq&&<span style={{fontSize:13,color:P,fontWeight:700,marginLeft:4}}>{f.codeType}-{f.codeYear}-{f.codeSeq}</span>}
+      </div>
+      {f.codeType&&<div style={{fontSize:11,color:'#888',marginTop:4}}>{TYPE_MAP[f.codeType]}</div>}
     </div>
+    <div className="fg"><label className="flabel">계약건명 (과제명) *</label><input type="text" className="finput" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="과제명 입력"/></div>
     <div className="frow">
-      <div className="fg"><label className="flabel">시작일 *</label><input type="date" className="finput" value={f.start} onChange={e=>setF({...f,start:e.target.value})}/></div>
-      <div className="fg"><label className="flabel">종료일 *</label><input type="date" className="finput" value={f.end} onChange={e=>setF({...f,end:e.target.value})}/></div>
+      <div className="fg"><label className="flabel">시작일 *</label><input type="date" className="finput" value={f.start} onChange={e=>chkDate(e.target.value,'start')}/></div>
+      <div className="fg"><label className="flabel">종료일 *</label><input type="date" className="finput" value={f.end} onChange={e=>chkDate(e.target.value,'end')}/></div>
     </div>
     <div className="fg"><label className="flabel">공개 여부</label>
       <select className="fselect" value={f.pub?'pub':'priv'} onChange={e=>setF({...f,pub:e.target.value==='pub'})}>
         <option value="pub">공개</option><option value="priv">비공개</option>
       </select>
     </div>
-    {!f.pub&&<div className="fg"><label className="flabel">비공개 만료일</label><input type="date" className="finput" value={f.privExpiry} onChange={e=>setF({...f,privExpiry:e.target.value})}/></div>}
+    {!f.pub&&<div className="fg"><label className="flabel">비공개 만료일</label><input type="date" className="finput" value={f.privExpiry} onChange={e=>chkDate(e.target.value,'privExpiry')}/></div>}
     {users.length>0&&<div className="fg"><label className="flabel">담당자</label>
       <div className="assignee-wrap">
         {users.map(u=><button key={u.id} type="button" className="assignee-chip"
@@ -855,6 +899,61 @@ function typeBadge(type){
   return <span className="tbadge con">수탁</span>;
 }
 
+/* ─────────── SIDEBAR PROJECT LIST ─────────── */
+function SidebarProjectList({projects,selId,onSelect,emptyMsg}){
+  const [filterType,setFilterType]=useState(null);
+  const [filterYear,setFilterYear]=useState(null);
+  const sorted=useMemo(()=>[...projects].sort(sortByCode),[projects]);
+  const availTypes=useMemo(()=>{
+    const s=new Set(sorted.map(p=>p.code?p.code.split('-')[0]:'').filter(Boolean));
+    return['A','B','C'].filter(t=>s.has(t));
+  },[sorted]);
+  const availYears=useMemo(()=>{
+    if(!filterType)return[];
+    const s=new Set(sorted.filter(p=>p.code&&p.code.split('-')[0]===filterType).map(p=>p.code.split('-')[1]).filter(Boolean));
+    return[...s].sort();
+  },[sorted,filterType]);
+  const filtered=useMemo(()=>sorted.filter(p=>{
+    if(!filterType)return true;
+    if(!p.code)return false;
+    const[ct,cy]=p.code.split('-');
+    if(ct!==filterType)return false;
+    if(filterYear&&cy!==filterYear)return false;
+    return true;
+  }),[sorted,filterType,filterYear]);
+  function selType(t){if(filterType===t){setFilterType(null);setFilterYear(null);}else{setFilterType(t);setFilterYear(null);}}
+  const btnBase={borderRadius:6,border:'.5px solid',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',transition:'all .12s',padding:'3px 10px'};
+  const yrBase={borderRadius:5,border:'.5px solid',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit',transition:'all .12s',padding:'2px 8px'};
+  return <>
+    <div style={{padding:'0 8px 6px'}}>
+      <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:4}}>
+        <button style={{...btnBase,borderColor:!filterType?'#555':'#ddd',background:!filterType?'#f0f0f0':'#fff',color:!filterType?'#333':'#aaa'}}
+          onClick={()=>{setFilterType(null);setFilterYear(null);}}>전체</button>
+        {['A','B','C'].map(t=><button key={t}
+          style={{...btnBase,borderColor:filterType===t?P:'#ddd',background:filterType===t?P:'#fff',color:filterType===t?'#fff':'#aaa'}}
+          onClick={()=>selType(t)}>{t}</button>)}
+      </div>
+      {filterType&&availYears.length>0&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+        {availYears.map(y=><button key={y}
+          style={{...yrBase,borderColor:filterYear===y?P:'#ddd',background:filterYear===y?'#E6F1FB':'#f8f8f8',color:filterYear===y?'#185FA5':'#888'}}
+          onClick={()=>setFilterYear(filterYear===y?null:y)}>{y}</button>)}
+      </div>}
+    </div>
+    <div className="sidebar-projects">
+      {filtered.length===0&&<div style={{textAlign:'center',color:'#ccc',fontSize:12,padding:14}}>{projects.length===0?(emptyMsg||'과제가 없습니다.'):'해당 과제가 없습니다.'}</div>}
+      {filtered.map(p=>{
+        const pg=p.type==='수탁연구'?null:progress(p.checklist);
+        return <div key={p.id} className={`sproj-item${selId===p.id?' active':''}`} onClick={()=>onSelect(p.id)}>
+          <div className="sproj-name">{p.name}</div>
+          <div className="sproj-meta">{typeBadge(p.type)}{!p.pub&&<span className="tbadge priv">비공개</span>}{p.code&&<span style={{fontSize:11,color:'#aaa',fontWeight:600}}>{p.code}</span>}</div>
+          {pg!==null?<><div className="prog-bar"><div className="prog-fill" style={{width:`${pg}%`}}/></div><div className="prog-label">{pg}% 완료</div></>
+            :<div className="prog-label">체크리스트 없음</div>}
+        </div>;
+      })}
+    </div>
+  </>;
+}
+
 /* ─────────── ADMIN DASHBOARD ─────────── */
 function AdminDash({data,onChange,onLogout}){
   const [view,setView]=useState('dash');
@@ -873,7 +972,7 @@ function AdminDash({data,onChange,onLogout}){
   function updProj(p){onChange({...data,projects:data.projects.map(x=>x.id===p.id?p:x)})}
   function addProj(f){
     const cl=genChecklist(f.type,f.end,f.pub,f.privExpiry);
-    const p={id:uid(),name:f.name,type:f.type,start:f.start,end:f.end,pub:f.pub,privExpiry:f.privExpiry,assignees:f.assignees,checklist:cl};
+    const p={id:uid(),code:f.code||'',name:f.name,type:f.type,start:f.start,end:f.end,pub:f.pub,privExpiry:f.privExpiry,assignees:f.assignees,checklist:cl};
     onChange({...data,projects:[...data.projects,p]});
     setSelId(p.id);setProjModal(null);
   }
@@ -927,18 +1026,7 @@ function AdminDash({data,onChange,onLogout}){
             <i className="ti ti-plus"/> 과제 등록
           </button>
         </div>
-        <div className="sidebar-projects">
-          {data.projects.length===0&&<div style={{textAlign:'center',color:'#ccc',fontSize:12,padding:14}}>과제가 없습니다.</div>}
-          {data.projects.map(p=>{
-            const pg=p.type==='수탁연구'?null:progress(p.checklist);
-            return <div key={p.id} className={`sproj-item${selId===p.id?' active':''}`} onClick={()=>{setSelId(p.id);setView('dash')}}>
-              <div className="sproj-name">{p.name}</div>
-              <div className="sproj-meta">{typeBadge(p.type)}{!p.pub&&<span className="tbadge priv">비공개</span>}</div>
-              {pg!==null?<><div className="prog-bar"><div className="prog-fill" style={{width:`${pg}%`}}/></div><div className="prog-label">{pg}% 완료</div></>
-                :<div className="prog-label">체크리스트 없음</div>}
-            </div>;
-          })}
-        </div>
+        <SidebarProjectList projects={data.projects} selId={selId} onSelect={id=>{setSelId(id);setView('dash')}}/>
       </div>
       <div className="main">
         {view==='dash'&&<>
@@ -1022,18 +1110,7 @@ function UserDash({data,user,onChange,onLogout}){
           <button className={`snav-item${view==='cal'?' active':''}`} onClick={()=>setView('cal')}><i className="ti ti-calendar"/> 캘린더</button>
         </div>
         <div className="sidebar-section">내 과제</div>
-        <div className="sidebar-projects">
-          {myProjs.length===0&&<div style={{textAlign:'center',color:'#ccc',fontSize:12,padding:14}}>담당 과제가 없습니다.</div>}
-          {myProjs.map(p=>{
-            const pg=p.type==='수탁연구'?null:progress(p.checklist);
-            return <div key={p.id} className={`sproj-item${selId===p.id?' active':''}`} onClick={()=>{setSelId(p.id);setView('dash')}}>
-              <div className="sproj-name">{p.name}</div>
-              <div className="sproj-meta">{typeBadge(p.type)}</div>
-              {pg!==null?<><div className="prog-bar"><div className="prog-fill" style={{width:`${pg}%`}}/></div><div className="prog-label">{pg}% 완료</div></>
-                :<div className="prog-label">체크리스트 없음</div>}
-            </div>;
-          })}
-        </div>
+        <SidebarProjectList projects={myProjs} selId={selId} onSelect={id=>{setSelId(id);setView('dash')}} emptyMsg="담당 과제가 없습니다."/>
       </div>
       <div className="main">
         {view==='dash'&&<>
