@@ -6,7 +6,15 @@
 <title>연구 행정 일정 관리</title>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.2/babel.min.js"></script>
+<script>
+Babel.registerPreset('react-classic', {
+  presets: [
+    [Babel.availablePresets['react'], { runtime: 'classic' }],
+    Babel.availablePresets['env']
+  ]
+});
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -230,7 +238,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const DB_REF = firebase.database().ref('rsch_admin');
 </script>
-<script type="text/babel">
+<script type="text/babel" data-presets="react-classic">
+/* @jsxRuntime classic */
 const {useState,useEffect,useMemo,useRef,useCallback}=React;
 const P='#378ADD';
 
