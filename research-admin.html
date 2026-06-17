@@ -596,6 +596,21 @@ function UserForm({user,onSave,onClose}){
   </Modal>;
 }
 
+/* ─────────── PRIV WARNING MODAL ─────────── */
+function PrivWarningModal({onClose}){
+  return <Modal title="안내" onClose={onClose}>
+    <div style={{fontSize:14,lineHeight:1.9,color:'#333'}}>
+      <span style={{color:'#A32D2D',fontWeight:700}}>유의!</span>
+      {' '}비공개 기간이 경과한 경우, 총괄책임자는 3개월 이내에<br/>
+      홈페이지에 등록된 비공개 보고서 요약문을 최종보고서로 대체하여<br/>
+      변경 등록해야 합니다!
+    </div>
+    <div className="modal-footer">
+      <button className="btn btn-primary" onClick={onClose}>확인</button>
+    </div>
+  </Modal>;
+}
+
 /* ─────────── CHECKLIST VIEW ─────────── */
 function ChecklistView({proj,onUpdate,isAdmin}){
   const [modal,setModal]=useState(null);
@@ -613,7 +628,8 @@ function ChecklistView({proj,onUpdate,isAdmin}){
     const patch={done:true,doneDate:data.doneDate};
     if(data.reviewResult!==undefined)patch.reviewResult=data.reviewResult;
     upd(cl.map(s=>s.id===step.id?{...s,...patch}:s));
-    setModal(null);
+    if(step.n===9&&step.sub===1) setModal({t:'privWarning'});
+    else setModal(null);
   }
   function onEval(step,data){
     let cl2=cl.map(s=>s.id===step.id?{...s,done:true,doneDate:data.dt,evals:data.evals,avg:data.avg,grade:data.grade}:s);
@@ -676,6 +692,7 @@ function ChecklistView({proj,onUpdate,isAdmin}){
     {modal?.t==='done'&&<CompleteModal step={modal.step} onOk={data=>onDone(modal.step,data)} onClose={()=>setModal(null)}/>}
     {modal?.t==='eval'&&<EvalModal step={modal.step} onOk={d=>onEval(modal.step,d)} onClose={()=>setModal(null)}/>}
     {modal?.t==='due'&&<DueDateModal step={modal.step} onOk={dt=>onDue(modal.step,dt)} onClose={()=>setModal(null)}/>}
+    {modal?.t==='privWarning'&&<PrivWarningModal onClose={()=>setModal(null)}/>}
   </div>;
 }
 
