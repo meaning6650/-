@@ -252,7 +252,7 @@ function fdd(n){if(n===0)return'D-day';if(n<0)return`D+${Math.abs(n)}`;return`D-
 function ddcls(n){if(n===null)return null;if(n<=1)return'dd-red';if(n<=3)return'dd-ora';if(n<=7)return'dd-blu';return null}
 function grade(a){if(a>=80)return'매우우수';if(a>=70)return'우수';if(a>=60)return'보통';return'부적격'}
 function gradeColor(g){return g==='매우우수'?'#3B6D11':g==='우수'?P:g==='보통'?'#854F0B':'#A32D2D'}
-function progress(cl){if(!cl||!cl.length)return 0;const a=cl.filter(s=>!s.subStep||s.subStep===0||true);if(!a.length)return 0;return Math.round(a.filter(s=>s.completed||s.skipped).length/a.length*100)}
+function progress(cl){if(!cl||!cl.length)return 0;if(!cl.length)return 0;return Math.round(cl.filter(s=>s.done||s.skip).length/cl.length*100)}
 function sortByCode(a,b){
   if(!a.code&&!b.code)return 0;if(!a.code)return 1;if(!b.code)return -1;
   const pa=a.code.split('-');const pb=b.code.split('-');
