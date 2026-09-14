@@ -642,7 +642,18 @@ function ChecklistView({proj,onUpdate,isAdmin}){
     upd(cl2);setModal(null);
   }
   function onSkip(step){upd(cl.map(s=>s.id===step.id?{...s,skip:true}:s))}
-  function onUndo(step){upd(cl.map(s=>s.id===step.id?{...s,done:false,doneDate:'',reviewResult:'',skip:false,evals:step.n===6?[{name:'',score:''},{name:'',score:''},{name:'',score:''}]:s.evals,avg:step.n===6?null:s.avg,grade:step.n===6?null:s.grade}:s))}
+  function onUndo(step){
+    upd(cl.map(s=>{
+      if(s.id!==step.id)return s;
+      const patch={done:false,doneDate:'',reviewResult:'',skip:false};
+      if(step.n===6){
+        patch.evals=[{name:'',score:''},{name:'',score:''},{name:'',score:''}];
+        patch.avg=null;
+        patch.grade=null;
+      }
+      return{...s,...patch};
+    }));
+  }
   function onDue(step,dt){upd(cl.map(s=>s.id===step.id?{...s,due:dt}:s));setModal(null)}
 
   return <div className="card-body" style={{padding:'10px 18px'}}>
@@ -1188,7 +1199,13 @@ function App(){
     return ()=>DB_REF.off('value');
   },[]);
 
-  function chg(d){ DB_REF.set(d).catch(err=>alert('저장 실패: '+err.message)); }
+  function chg(d){
+    try{
+      DB_REF.set(d).catch(err=>alert('저장 실패: '+err.message));
+    }catch(err){
+      alert('저장 실패: '+err.message);
+    }
+  }
   function login(s){ setSession(s); }
   function logout(){ setSession(null); }
 
