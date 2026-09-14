@@ -1182,13 +1182,13 @@ function App(){
     DB_REF.on('value',snap=>{
       const raw=snap.val();
       const d=normalizeData(raw);
-      if(!raw) DB_REF.set(d);
+      if(!raw) DB_REF.set(d).catch(err=>alert('Firebase 초기화 실패: '+err.message));
       setData(d);
-    });
+    },err=>alert('Firebase 연결 실패: '+err.message));
     return ()=>DB_REF.off('value');
   },[]);
 
-  function chg(d){ DB_REF.set(d); }
+  function chg(d){ DB_REF.set(d).catch(err=>alert('저장 실패: '+err.message)); }
   function login(s){ setSession(s); }
   function logout(){ setSession(null); }
 
