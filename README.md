@@ -1,0 +1,21 @@
+# 연구관리 통합대장
+
+한국건강증진개발원 건강증진연구소 / 연구과제·심의위원회 관리 웹앱 (Vite + React + TypeScript)
+
+## 실행
+```
+npm ci
+npm run dev        # 개발 서버
+npm run build      # 타입 검사 + 빌드 (dist/)
+```
+
+## 진행 단계
+- [x] 1단계 프로젝트 생성, 토큰·공통 컴포넌트, 상단바, 정적 화면 6종(더미 데이터)
+- [ ] 2단계 domain(regimes, stages, flow, fields) + 단위 테스트
+- [ ] 3단계 Firebase 연결, 로그인, 권한, 보안 규칙
+- [ ] 4~9단계 이관, 데이터 연결, 근거 파일, 심의위원회, 엑셀 내보내기, 배포·설명서 (후임자용 설명서는 9단계)
+
+## 참고 자료
+- `reference/regulations/` 연구관리규정 원문(hwp) 9종 + `text/` 추출본(대조용)
+- `reference/ci/` KHEPI CI / 앱 로고는 `public/ci/signature.png`
+- `reference/excel/` 개인정보 포함 원자료 → git 제외(.gitignore)
