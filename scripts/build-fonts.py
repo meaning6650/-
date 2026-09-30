@@ -9,7 +9,8 @@ from fontTools.ttLib import TTFont
 
 SRC = 'reference/fonts'
 OUT = 'public/fonts'
-WEIGHTS = {'Light': 'light', 'Medium': 'medium', 'Bold': 'bold'}
+# Light 는 사용하지 않음 (본문 medium 확정, 2026.10.01.)
+WEIGHTS = {'Medium': 'medium', 'Bold': 'bold'}
 
 
 def ksx1001_chars():

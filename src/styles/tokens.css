@@ -2,13 +2,6 @@
    서브셋 밖 글자는 맑은 고딕 등 다음 글꼴로 대체 / 생성: scripts/build-fonts.py */
 @font-face {
   font-family: 'KoPub Dotum';
-  src: url('/fonts/kopub-dotum-light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'KoPub Dotum';
   src: url('/fonts/kopub-dotum-medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
@@ -56,8 +49,10 @@
   --topbar-h: 64px;
 
   --font: 'KoPub Dotum', 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', sans-serif;
-  --fw-body: 500;   /* 본문: 500(medium) 잠정 / light 로 바꿀 때 300 */
-  --fw-label: 500;  /* 라벨 */
+  --fw-body: 500;   /* 본문: medium 확정 (2026.10.01.) */
+  --fw-label: 500;  /* 라벨: 굵기 대신 글자색·크기로 본문과 구분 */
+  --fs-label: 13px;
+  --label: #4E5B6E; /* = --muted */
   --fw-title: 700;  /* 소제목·제목 */
   --shadow-card: 0 1px 2px rgba(42, 42, 41, 0.04);
   --shadow-pop: 0 8px 28px rgba(42, 42, 41, 0.16);
