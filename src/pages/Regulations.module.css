@@ -13,7 +13,7 @@
 .cmpWrap { border: 1px solid var(--line); border-radius: var(--radius-card); overflow: auto; }
 .cmp th { background: var(--black); color: #fff; padding: 10px; font-weight: 600; text-align: center; border-right: 1px solid #4a4a49; }
 .cmp th.now { background: var(--green); }
-.cmp th small { display: block; font-weight: 400; opacity: .8; font-size: 11px; }
+.cmp th small { display: block; font-weight: var(--fw-body); opacity: .8; font-size: 11px; }
 .cmp td { padding: 10px 12px; border-top: 1px solid var(--line-soft); border-right: 1px solid var(--line-soft); vertical-align: top; }
 .cmp td.item { text-align: center; font-weight: 600; background: #FAFBFA; white-space: nowrap; }
 .cmp td.changed { background: var(--orange-soft); }

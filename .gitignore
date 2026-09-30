@@ -11,3 +11,6 @@ dist/
 # 개인정보 포함 원자료 — GitHub 업로드 금지
 /reference/excel/
 /reference/design/private/
+
+# 글꼴 원본 TTF — woff2 서브셋만 저장소 포함
+/reference/fonts/*.ttf

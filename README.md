@@ -15,7 +15,11 @@ npm run build      # 타입 검사 + 빌드 (dist/)
 - [ ] 3단계 Firebase 연결, 로그인, 권한, 보안 규칙
 - [ ] 4~9단계 이관, 데이터 연결, 근거 파일, 심의위원회, 엑셀 내보내기, 배포·설명서 (후임자용 설명서는 9단계)
 
+## 문서
+- `docs/개발지시서.md` 개발 지시서(개정 이력 포함)
+
 ## 참고 자료
 - `reference/regulations/` 연구관리규정 원문(hwp) 9종 + `text/` 추출본(대조용)
 - `reference/ci/` KHEPI CI / 앱 로고는 `public/ci/signature.png`
+- `reference/fonts/` KoPubWorld 돋움체 원본 TTF → git 제외 / `python3 scripts/build-fonts.py` 로 `public/fonts/*.woff2` 재생성
 - `reference/excel/` 개인정보 포함 원자료 → git 제외(.gitignore)
