@@ -28,3 +28,24 @@ export type ProjectInput = {
   publication?: { homepageRegisteredAt?: string };
   checklist?: string;
 };
+
+/* ---------- 근거 기록 (projects/{id}/files) ---------- */
+
+export const EVIDENCE_CATEGORIES = [
+  '계획서', '심의', '계약', '착수보고', '중간보고', '평가', '종료보고', '최종보고서', '공표', '기타',
+] as const;
+export type EvidenceCategory = (typeof EVIDENCE_CATEGORIES)[number];
+
+/**
+ * 근거 기록 — 파일 업로드 대신 공문번호·공유폴더 경로 기록 (Storage 보류, 2026.10.01. 결정)
+ * 추후 Storage 도입 시 storagePath 필드만 추가 (기존 기록 그대로 사용)
+ */
+export type EvidenceRecord = {
+  category: EvidenceCategory;
+  docNo: string;      // 공문번호 예: 건강증진연구소-1204(2025.12.03.)
+  path: string;       // 공유폴더 경로 예: \\nas\연구관리\B.위탁연구\B-2025-3
+  fileName: string;   // 관리번호_분류_YYYYMMDD_원본명
+  note: string;
+  by: string;         // 작성자 이메일(소문자, 보안 규칙과 동일)
+  at: string;         // 기록 일시 ISO
+};

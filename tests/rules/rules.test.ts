@@ -18,10 +18,11 @@ const USERS = {
   viewer: 'viewer@khepi.or.kr',
   unregistered: 'stranger@gmail.com',
 } as const;
-type Role = keyof typeof USERS | 'anonymous';
-const ROLES: Role[] = ['admin', 'editor', 'viewer', 'unregistered', 'anonymous'];
+type Role = keyof typeof USERS | 'unverified' | 'anonymous';
+const ROLES: Role[] = ['admin', 'editor', 'viewer', 'unregistered', 'unverified', 'anonymous'];
 const ROLE_LABEL: Record<Role, string> = {
-  admin: '관리자', editor: '편집자', viewer: '열람자', unregistered: '미등록(로그인)', anonymous: '비로그인',
+  admin: '관리자', editor: '편집자', viewer: '열람자', unregistered: '미등록(로그인)',
+  unverified: '미인증 이메일', anonymous: '비로그인',
 };
 
 let env: RulesTestEnvironment;
@@ -29,6 +30,8 @@ const results: { group: string; op: string; role: Role; expected: boolean; actua
 
 function ctx(role: Role): RulesTestContext {
   if (role === 'anonymous') return env.unauthenticatedContext();
+  // 미인증 이메일: 관리자 이메일이지만 email_verified false
+  if (role === 'unverified') return env.authenticatedContext('uid-unverified', { email: USERS.admin, email_verified: false });
   return env.authenticatedContext(`uid-${role}`, { email: USERS[role], email_verified: true });
 }
 
@@ -99,24 +102,36 @@ function matrix(group: string, op: string, expected: Expect, run: (c: RulesTestC
 matrix('권한 목록 config/access', '읽기', only(...MEMBERS), (c) => getDoc(doc(c.firestore(), 'config/access')));
 matrix('권한 목록 config/access', '사용자 추가', only('admin'), (c) =>
   updateDoc(doc(c.firestore(), 'config/access'), { viewers: [USERS.viewer, 'new@khepi.or.kr'] }));
+matrix('권한 목록 config/access', '관리자 본인 권한 해제', only(), (c) =>
+  updateDoc(doc(c.firestore(), 'config/access'), { admins: ['other@khepi.or.kr'] }));
+matrix('권한 목록 config/access', '관리자 0명으로 변경', only(), (c) =>
+  updateDoc(doc(c.firestore(), 'config/access'), { admins: [] }));
+matrix('권한 목록 config/access', '관리자 추가 (본인 유지)', only('admin'), (c) =>
+  updateDoc(doc(c.firestore(), 'config/access'), { admins: [USERS.admin, 'second@khepi.or.kr'] }));
 matrix('권한 목록 config/access', '실명 저장 허용값 변경', only(), (c) =>
   updateDoc(doc(c.firestore(), 'config/access'), { membersPrivateEnabled: true }));
 
 matrix('과제 projects', '읽기', only(...MEMBERS), (c) => getDoc(doc(c.firestore(), 'projects/B-2025-3')));
 matrix('과제 projects', '수정', only(...EDITORS), (c) => updateDoc(doc(c.firestore(), 'projects/B-2025-3'), { title: '수정' }));
 matrix('과제 projects', '신규 등록', only(...EDITORS), (c) => setDoc(doc(c.firestore(), 'projects/A-2026-9'), { type: 'A' }));
-matrix('과제 projects', '삭제', only(...EDITORS), (c) => deleteDoc(doc(c.firestore(), 'projects/B-2025-3')));
+matrix('과제 projects', '삭제', only('admin'), (c) => deleteDoc(doc(c.firestore(), 'projects/B-2025-3')));
 
 matrix('수정 이력 history', '읽기', only(...MEMBERS), (c) => getDoc(doc(c.firestore(), 'projects/B-2025-3/history/h1')));
-matrix('수정 이력 history', '추가', only(...EDITORS), (c, role) =>
+matrix('수정 이력 history', '추가 (작성자 본인 이메일)', only(...EDITORS), (c, role) =>
   addDoc(collection(c.firestore(), 'projects/B-2025-3/history'), {
-    field: 'title', before: 'a', after: 'b', by: role === 'anonymous' ? '' : USERS[role],
+    field: 'title', before: 'a', after: 'b', by: role === 'anonymous' ? '' : role === 'unverified' ? USERS.admin : USERS[role],
   }));
+matrix('수정 이력 history', '추가 (타인 이메일 기록)', only(), (c) =>
+  addDoc(collection(c.firestore(), 'projects/B-2025-3/history'), { field: 'title', before: 'a', after: 'b', by: 'someone@khepi.or.kr' }));
 matrix('수정 이력 history', '수정', only(), (c) => updateDoc(doc(c.firestore(), 'projects/B-2025-3/history/h1'), { after: '변조' }));
 matrix('수정 이력 history', '삭제', only(), (c) => deleteDoc(doc(c.firestore(), 'projects/B-2025-3/history/h1')));
 
-matrix('근거 파일 메타 files', '추가', only(...EDITORS), (c) =>
-  addDoc(collection(c.firestore(), 'projects/B-2025-3/files'), { name: 'x.pdf' }));
+matrix('근거 기록 files', '읽기', only(...MEMBERS), (c) => getDoc(doc(c.firestore(), 'projects/B-2025-3/files/f1')));
+matrix('근거 기록 files', '추가', only(...EDITORS), (c) =>
+  addDoc(collection(c.firestore(), 'projects/B-2025-3/files'), {
+    category: '최종보고서', docNo: '건강증진연구소-1204(2025.12.03.)', path: '\\\\nas\\연구관리\\B.위탁연구\\B-2025-3',
+    fileName: 'B-2025-3_최종보고서_20260220_최종보고서.pdf', note: '', by: 'editor@khepi.or.kr', at: '2026-10-01',
+  }));
 
 matrix('심의위원회 members', '읽기', only(...MEMBERS), (c) => getDoc(doc(c.firestore(), 'committees/research/members/m1')));
 matrix('심의위원회 members', '수정', only(...EDITORS), (c) => updateDoc(doc(c.firestore(), 'committees/research/members/m1'), { org: '수정' }));
@@ -137,20 +152,21 @@ matrix('정의되지 않은 경로', '읽기', only(), (c) => getDoc(doc(c.fires
 
 /* ---------------- Storage ---------------- */
 
+// Storage: 보관용 규칙 (Spark 유지로 미사용, 배포 제외)
 const FILE = 'projects/B-2025-3/B-2025-3_계획서_20250310_계획서.pdf';
-matrix('Storage 근거 파일', '내려받기', only(...MEMBERS), (c) => getBytes(ref(c.storage(), FILE)));
-matrix('Storage 근거 파일', '올리기 (pdf 1KB)', only(...EDITORS), (c) =>
+matrix('Storage 근거 파일 (보관·배포 제외)', '내려받기', only(...MEMBERS), (c) => getBytes(ref(c.storage(), FILE)));
+matrix('Storage 근거 파일 (보관·배포 제외)', '올리기 (pdf 1KB)', only(...EDITORS), (c) =>
   uploadBytes(ref(c.storage(), 'projects/B-2025-3/B-2025-3_평가_20251203_평가결과서.pdf'), new Uint8Array(1024)));
-matrix('Storage 근거 파일', '올리기 (hwpx 대문자 확장자)', only(...EDITORS), (c) =>
+matrix('Storage 근거 파일 (보관·배포 제외)', '올리기 (hwpx 대문자 확장자)', only(...EDITORS), (c) =>
   uploadBytes(ref(c.storage(), 'projects/B-2025-3/B-2025-3_기타_20251203_자료.HWPX'), new Uint8Array(10)));
-matrix('Storage 근거 파일', '올리기 (exe 확장자)', only(), (c) =>
+matrix('Storage 근거 파일 (보관·배포 제외)', '올리기 (exe 확장자)', only(), (c) =>
   uploadBytes(ref(c.storage(), 'projects/B-2025-3/setup.exe'), new Uint8Array(10)));
-matrix('Storage 근거 파일', '올리기 (20MB 초과)', only(), (c) =>
+matrix('Storage 근거 파일 (보관·배포 제외)', '올리기 (20MB 초과)', only(), (c) =>
   uploadBytes(ref(c.storage(), 'projects/B-2025-3/big.pdf'), new Uint8Array(20 * 1024 * 1024 + 1)));
-matrix('Storage 근거 파일', '올리기 (20MB 정확히)', only(...EDITORS), (c) =>
+matrix('Storage 근거 파일 (보관·배포 제외)', '올리기 (20MB 정확히)', only(...EDITORS), (c) =>
   uploadBytes(ref(c.storage(), 'projects/B-2025-3/limit.pdf'), new Uint8Array(20 * 1024 * 1024)));
-matrix('Storage 근거 파일', '삭제', only(...EDITORS), (c) => deleteObject(ref(c.storage(), FILE)));
-matrix('Storage 근거 파일', '경로 밖 올리기', only(), (c) => uploadBytes(ref(c.storage(), 'etc/a.pdf'), new Uint8Array(10)));
+matrix('Storage 근거 파일 (보관·배포 제외)', '삭제', only(...EDITORS), (c) => deleteObject(ref(c.storage(), FILE)));
+matrix('Storage 근거 파일 (보관·배포 제외)', '경로 밖 올리기', only(), (c) => uploadBytes(ref(c.storage(), 'etc/a.pdf'), new Uint8Array(10)));
 
 /* ---------------- 결과표 ---------------- */
 
@@ -172,6 +188,8 @@ function writeReport() {
     '',
     '- 실행: `npm run test:rules` (Firestore·Storage 에뮬레이터)',
     '- 미등록(로그인): Google 로그인했으나 config/access 허용목록에 없는 계정',
+    '- 미인증 이메일: 허용목록의 관리자 이메일이지만 이메일 인증(email_verified) false',
+    '- Storage: Spark 요금제 유지로 미사용, 규칙은 보관용 (배포 제외)',
     '',
     `| 대상 | 동작 | ${ROLES.map((r) => ROLE_LABEL[r]).join(' | ')} |`,
     `|---|---|${ROLES.map(() => '---').join('|')}|`,

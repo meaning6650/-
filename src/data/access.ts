@@ -36,7 +36,7 @@ export function roleOf(access: AccessDoc | null, email: string | null | undefine
 }
 
 /** 사용자 권한 지정 (다른 목록에서 제거 후 추가) — 관리자 전용 */
-export async function setUserRole(email: string, role: Role | null): Promise<AccessDoc> {
+export async function setUserRole(email: string, role: Role | null, me?: string | null): Promise<AccessDoc> {
   const e = normEmail(email);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('이메일 형식 오류 / 확인 필요');
   return runTransaction(firebase().db, async (tx) => {
@@ -50,6 +50,9 @@ export async function setUserRole(email: string, role: Role | null): Promise<Acc
       viewers: (cur.viewers ?? []).filter((x) => x !== e),
     };
     if (role) next[LIST[role]] = [...next[LIST[role]], e];
+    // 보안 규칙과 동일: 관리자 0명·본인 관리자 해제 불가
+    if (next.admins.length === 0) throw new Error('관리자 최소 1명 필요');
+    if (me && !next.admins.includes(normEmail(me))) throw new Error('본인 관리자 권한 해제 불가');
     tx.update(accessRef(), { admins: next.admins, editors: next.editors, viewers: next.viewers });
     return next;
   });

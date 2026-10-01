@@ -23,13 +23,13 @@ export function Admin() {
   const apply = async (target: string, role: Role | null, done: string) => {
     setBusy(true);
     try {
-      await setUserRole(target, role);
+      await setUserRole(target, role, user?.email);
       await refreshAccess();
       toast(done);
       return true;
     } catch (e) {
       const code = (e as { code?: string }).code;
-      toast(code === 'permission-denied' ? '권한 없음 / 관리자 확인 필요' : (e as Error).message, true);
+      toast(code === 'permission-denied' ? '권한 없음 / 관리자 0명·본인 권한 해제 불가' : (e as Error).message, true);
       return false;
     } finally {
       setBusy(false);
@@ -56,17 +56,17 @@ export function Admin() {
             <Select
               options={['관리자', '편집자', '열람자']}
               value={ROLE_LABEL[u.role]}
-              disabled={busy}
+              disabled={busy || u.email === me}
               onChange={(ev) => { const r = ROLE_BY_LABEL[ev.target.value]; if (r && r !== u.role) void apply(u.email, r, `${u.email} / ${ev.target.value} 변경 완료`); }}
             />
           ) },
           { key: 'x', header: '', width: 90, align: 'center', render: (u) => (
-            <Button variant="ghost" disabled={busy} onClick={() => {
+            <Button variant="ghost" disabled={busy || u.email === me} onClick={() => {
               if (window.confirm(`${u.email} 권한 삭제`)) void apply(u.email, null, `${u.email} / 권한 삭제 완료`);
             }}>삭제</Button>
           ) },
         ]} />
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>위원 실명 저장 허용은 정보보안 확인 후 Firebase 콘솔에서만 변경</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>본인 권한 변경·삭제 불가 (관리자 잠금 방지) / 위원 실명 저장 허용은 정보보안 확인 후 Firebase 콘솔에서만 변경</p>
         <div className={ui.card} style={{ padding: '4px 20px', marginTop: 12 }}>
           <Field label="이메일 추가"><TextInput placeholder="(작성 필요) 예: name@khepi.or.kr" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           <Field label="권한"><Select options={['관리자', '편집자', '열람자']} value={roleLabel} onChange={(e) => setRoleLabel(e.target.value)} /></Field>

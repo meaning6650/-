@@ -9,8 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-khepi-ledger \"vitest run --config vitest.rules.config.ts\"",
-    "emulators": "firebase emulators:start --only auth,firestore,storage --project demo-khepi-ledger"
+    "test:rules": "firebase emulators:exec -c firebase.test.json --only firestore,storage --project demo-khepi-ledger \"vitest run --config vitest.rules.config.ts\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-khepi-ledger",
+    "deploy:rules": "firebase deploy --only firestore:rules"
   },
   "dependencies": {
     "firebase": "^12.19.0",

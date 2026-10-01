@@ -9,6 +9,7 @@ npm run dev        # 개발 서버
 npm run build      # 타입 검사 + 빌드 (dist/)
 npm test           # domain 단위 테스트
 npm run test:rules # 보안 규칙 테스트 (에뮬레이터, Java 필요)
+npm run deploy:rules # Firestore 보안 규칙 배포 (Storage 미사용)
 npm run emulators  # 로컬 에뮬레이터 (.env.local 에 VITE_FB_USE_EMULATOR=true)
 ```
 
@@ -26,3 +27,4 @@ npm run emulators  # 로컬 에뮬레이터 (.env.local 에 VITE_FB_USE_EMULATOR
 - `reference/ci/` KHEPI CI / 앱 로고는 `public/ci/signature.png`
 - `reference/fonts/` KoPubWorld 돋움체 원본 TTF → git 제외 / `python3 scripts/build-fonts.py` 로 `public/fonts/*.woff2` 재생성
 - `reference/excel/` 개인정보 포함 원자료 → git 제외(.gitignore)
+- Firebase 요금제 Spark(무료) 유지 / Storage 미사용 — 근거 파일은 공문번호·공유폴더 경로 기록 방식, `storage.rules`·`firebase.test.json` 은 보관·테스트용
