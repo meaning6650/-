@@ -8,12 +8,14 @@ npm ci
 npm run dev        # 개발 서버
 npm run build      # 타입 검사 + 빌드 (dist/)
 npm test           # domain 단위 테스트
+npm run test:rules # 보안 규칙 테스트 (에뮬레이터, Java 필요)
+npm run emulators  # 로컬 에뮬레이터 (.env.local 에 VITE_FB_USE_EMULATOR=true)
 ```
 
 ## 진행 단계
 - [x] 1단계 프로젝트 생성, 토큰·공통 컴포넌트, 상단바, 정적 화면 6종(더미 데이터)
 - [x] 2단계 domain(regimes, stages, flow, fields) + 단위 테스트 (`npm test`)
-- [ ] 3단계 Firebase 연결, 로그인, 권한, 보안 규칙
+- [x] 3단계 Firebase 연결, 로그인, 권한, 보안 규칙 (콘솔 설정: `docs/Firebase_설정_안내.md`)
 - [ ] 4~9단계 이관, 데이터 연결, 근거 파일, 심의위원회, 엑셀 내보내기, 배포·설명서 (후임자용 설명서는 9단계)
 
 ## 문서

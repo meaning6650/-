@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../app/auth';
 import s from './Start.module.css';
 import { useToast } from '../components';
 
@@ -27,7 +28,7 @@ function DropZone({ target }: DropProps) {
 }
 
 export function Start() {
-  const isAdmin = true; // 3단계: config/access 연동
+  const isAdmin = useAuth().role === 'admin';
   return (
     <div className={s.wrap}>
       <h1 className={s.title}>업무 선택</h1>

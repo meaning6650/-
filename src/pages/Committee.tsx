@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../app/auth';
 import s from './Committee.module.css';
 import { Badge, Button, Field, OXSelect, Select, Table, TextInput, ui, useToast, type BadgeTone } from '../components';
 import { MEETINGS, MEMBERS, REVIEWS, type DummyMember } from '../dummy/committee';
@@ -21,7 +22,7 @@ export function Committee() {
   const [sub, setSub] = useState<Sub>('위원 명단 및 인적정보');
   const [mask, setMask] = useState(true);
   const [sel, setSel] = useState<DummyMember | null>(MEMBERS.research[0]);
-  const isAdmin = true; // 3단계: 권한 연동
+  const isAdmin = useAuth().role === 'admin';
   const toast = useToast();
 
   const members = MEMBERS[cmt];

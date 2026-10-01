@@ -1,6 +1,8 @@
 import { NavLink, Link, Outlet } from 'react-router-dom';
 import s from './Layout.module.css';
 import { Button, useToast } from '../components';
+import { useAuth } from './auth';
+import { ROLE_LABEL } from '../data/access';
 
 const MENU = [
   { to: '/projects', label: '연구관리 현황' },
@@ -11,6 +13,7 @@ const MENU = [
 
 export function Layout() {
   const toast = useToast();
+  const { user, role, signOut } = useAuth();
   return (
     <div className={s.shell}>
       <header className={s.top}>
@@ -27,9 +30,12 @@ export function Layout() {
           ))}
         </nav>
         <div className={s.right}>
-          <span className={s.user}><b>홍길동</b> 관리자</span>
+          <span className={s.user} title={user?.email ?? ''}>
+            <b>{user?.displayName || user?.email}</b> {role ? ROLE_LABEL[role] : ''}
+          </span>
           <Button variant="ghost" onClick={() => toast('변경내역: 3단계(데이터 연결) 이후 제공')}>변경내역</Button>
           <Button variant="primary" onClick={() => toast('엑셀 내보내기: 8단계 구현 예정')}>엑셀 내보내기</Button>
+          <Button variant="ghost" onClick={() => void signOut()}>로그아웃</Button>
         </div>
       </header>
       <main className={s.main}>

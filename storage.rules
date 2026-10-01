@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// 근거 파일 Storage 보안 규칙 (지시서 13장)
+// - 로그인 + 허용목록 / 업로드·삭제는 편집자 이상
+// - 20MB 이하, 확장자 pdf·hwp·hwpx·docx·xlsx·png·jpg
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function access() {
+      return firestore.get(/databases/(default)/documents/config/access).data;
+    }
+    function email() {
+      return request.auth.token.email.lower();
+    }
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    function isEditor() {
+      return signedIn() && (email() in access().admins || email() in access().editors);
+    }
+    function isMember() {
+      return isEditor() || (signedIn() && email() in access().viewers);
+    }
+    function allowedFile(name) {
+      return name.lower().matches('.*[.](pdf|hwp|hwpx|docx|xlsx|png|jpg)$');
+    }
+
+    // 경로: projects/{관리번호}/{관리번호_분류_YYYYMMDD_원본명}
+    match /projects/{projectId}/{fileName} {
+      allow read: if isMember();
+      allow create, update: if isEditor()
+        && request.resource.size <= 20 * 1024 * 1024
+        && allowedFile(fileName);
+      allow delete: if isEditor();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
