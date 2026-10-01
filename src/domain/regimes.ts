@@ -1,7 +1,10 @@
 /**
  * 적용 규정 구간 정의 — 연구관리규정 원문(reference/regulations) 대조 결과
- * 기한·절차가 달라지는 구간 5개. 판별 로직은 2단계에서 추가.
+ * 기한·절차가 달라지는 구간 5개 / 판별 로직은 파일 하단 determineRegime
  */
+
+import { formatDate, formatDateShort, parseYm, reviewYmFromNo, toISO } from './fields';
+import type { ProjectInput } from './types';
 
 export type RegimeKey = 'R2019' | 'R2020' | 'R2022' | 'R2023' | 'R2025';
 
@@ -193,3 +196,96 @@ export const STAGE_REFS: Record<RegimeKey, Record<StageKey, StageRef>> = {
     checklist: { article: '제29조', forms: '서식16호' },
   },
 };
+
+/* ---------- 적용 규정 판별 (지시서 5장) ---------- */
+
+
+const D2025 = '2025-08-11';
+const D2023 = '2023-05-12';
+const D2022 = '2022-07-15';
+const D2020 = '2020-08-12';
+
+export type RegimeResult =
+  | { status: 'ok'; regime: RegimeKey; basis: string; by: 'override' | 'endDate' | 'review' | 'startDate' }
+  | { status: 'excluded'; regime: null; basis: string }   // 수탁연구
+  | { status: 'unknown'; regime: null; basis: string };   // 판별 불가
+
+/**
+ * 심의 승인일 산출
+ * - review.ym("YYYY.MM.") 우선, 없으면 review.no 앞 4자리(YYMM)
+ * - meetingDates(심의개최 목록, ISO) 중 같은 연월의 가장 이른 개최일 사용, 없으면 해당 월 1일
+ */
+export function reviewApprovalDate(
+  review: ProjectInput['review'],
+  meetingDates: string[] = [],
+): { iso: string; ym: string; matched: boolean } | null {
+  if (!review) return null;
+  const ym = parseYm(review.ym) ?? parseYm(reviewYmFromNo(review.no));
+  if (!ym) return null;
+  const prefix = toISO(ym.y, ym.m, 1).slice(0, 7);
+  const hit = meetingDates.filter((d) => d.startsWith(prefix)).sort()[0];
+  return {
+    iso: hit ?? `${prefix}-01`,
+    ym: `${ym.y}.${String(ym.m).padStart(2, '0')}.`,
+    matched: !!hit,
+  };
+}
+
+/** 심의명 "심의X" 여부 (공백·대소문자 무시) */
+export function isNoReview(reviewName: string | undefined): boolean {
+  return !!reviewName && /^심의\s*x$/i.test(reviewName.trim());
+}
+
+/**
+ * 적용 규정 판별
+ * 1) regimeOverride 2) 수탁 제외 3) 종료일 ≥ 2025.8.11. → R2025
+ * 4) 심의 승인일 ≥ 2023.5.12. → R2023, ≥ 2022.7.15. → R2022 (심의X 이면 무시)
+ * 5) 연구시작일 기준 (없으면 심의 승인일 대체), 둘 다 없으면 판별 불가
+ */
+export function determineRegime(p: ProjectInput, meetingDates: string[] = []): RegimeResult {
+  if (p.regimeOverride) {
+    return { status: 'ok', regime: p.regimeOverride, by: 'override', basis: `수동 지정 / ${REGIMES[p.regimeOverride].label}` };
+  }
+  if (p.type === 'C') {
+    return { status: 'excluded', regime: null, basis: '수탁연구 / 발주처 계약조건 적용 (제27조)' };
+  }
+  if (p.endDate && p.endDate >= D2025) {
+    return { status: 'ok', regime: 'R2025', by: 'endDate', basis: `연구종료일 ${formatDate(p.endDate)} / ${formatDateShort(D2025)} 이후 종료 과제 해당` };
+  }
+
+  const approval = isNoReview(p.reviewName) ? null : reviewApprovalDate(p.review, meetingDates);
+  if (approval) {
+    if (approval.iso >= D2023) return { status: 'ok', regime: 'R2023', by: 'review', basis: `심의 승인 ${approval.ym} / ${formatDateShort(D2023)} 이후 심의 승인 과제 해당` };
+    if (approval.iso >= D2022) return { status: 'ok', regime: 'R2022', by: 'review', basis: `심의 승인 ${approval.ym} / ${formatDateShort(D2022)} 이후 심의 승인 과제 해당` };
+  }
+
+  const base = p.startDate ? { iso: p.startDate, label: `연구시작일 ${formatDate(p.startDate)}`, noun: '시작' }
+    : approval ? { iso: approval.iso, label: `심의 승인 ${approval.ym} (연구시작일 미입력)`, noun: '심의 승인' }
+    : null;
+  if (!base) {
+    return { status: 'unknown', regime: null, basis: '연구기간 미입력 / 적용 규정 판별 불가' };
+  }
+  const by = 'startDate' as const;
+  if (base.iso >= D2023) return { status: 'ok', regime: 'R2023', by, basis: `${base.label} / ${formatDateShort(D2023)} 이후 ${base.noun} 과제 해당` };
+  if (base.iso >= D2022) return { status: 'ok', regime: 'R2022', by, basis: `${base.label} / ${formatDateShort(D2022)} 이후 ${base.noun} 과제 해당` };
+  if (base.iso >= D2020) return { status: 'ok', regime: 'R2020', by, basis: `${base.label} / ${formatDateShort(D2020)} 이후 ${base.noun} 과제 해당` };
+  return { status: 'ok', regime: 'R2019', by, basis: `${base.label} / ${formatDateShort(D2020)} 이전 ${base.noun} 과제 해당` };
+}
+
+/**
+ * 현행 엑셀 '연구관리규정(기준)' 표기와 비교
+ * - 같으면 null / R2023 vs "2022년도" → 라벨만 상이 / 그 외 → 확인 필요
+ */
+export function compareExcelRegime(regime: RegimeKey | null, excelLabel: string | null | undefined):
+  { level: 'info' | 'warn'; text: string } | null {
+  if (!regime || !excelLabel || !excelLabel.trim()) return null;
+  const year = /(\d{4})/.exec(excelLabel)?.[1];
+  const excelKey = year ? (`R${year}` as RegimeKey) : null;
+  if (excelKey === regime) return null;
+  const label = excelLabel.trim();
+  const pair = new Set([regime, excelKey]);
+  if (pair.has('R2022') && pair.has('R2023')) {
+    return { level: 'info', text: `엑셀 표기 ${label} / 기한 산정 동일, 라벨만 상이` };
+  }
+  return { level: 'warn', text: `엑셀 표기 ${label} / 판단 기준 상이, 확인 필요` };
+}
