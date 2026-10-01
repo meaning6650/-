@@ -4,7 +4,9 @@ import {
   parseBirth, parseDate, parseMoney, parsePeriod, reviewYmFromNo,
 } from './fields';
 import { compareExcelRegime, determineRegime, reviewApprovalDate } from './regimes';
-import { COMMITTEE_EVAL_NOTE, checkEvaluation, computeStages, summarize, type StageResult } from './stages';
+import {
+  COMMITTEE_EVAL_NOTE, REFERENCE_LABEL, checkEvaluation, committeeEvalNote, computeStages, referenceRecords, summarize, type StageResult,
+} from './stages';
 import { flowFor } from './flow';
 import type { ProjectInput } from './types';
 
@@ -73,8 +75,9 @@ describe('필수 사례 4: 입력 변환', () => {
 
 describe('제23조 안내 문구: R2022·R2023 의 5·6단계에만 표시', () => {
   const base: ProjectInput = { type: 'A', reviewName: '심의O', endDate: '2024-10-31' };
+  const NOTE_HEAD = '위원회 의뢰 평가 시 원문 기한 상이';
   const notesOf = (regime: 'R2019' | 'R2020' | 'R2022' | 'R2023' | 'R2025') =>
-    computeStages(base, regime, TODAY).filter((s) => s.notes.includes(COMMITTEE_EVAL_NOTE)).map((s) => s.key);
+    computeStages(base, regime, TODAY).filter((s) => s.notes.some((n) => n.startsWith(NOTE_HEAD))).map((s) => s.key);
 
   it('R2022·R2023: 평가(5)·평가결과서(6) 두 단계에 표시', () => {
     expect(notesOf('R2022')).toEqual(['evaluation', 'evalDoc']);
@@ -85,13 +88,46 @@ describe('제23조 안내 문구: R2022·R2023 의 5·6단계에만 표시', () 
     expect(notesOf('R2020')).toEqual([]);
     expect(notesOf('R2019')).toEqual([]);
   });
-  it('문구 원문 일치', () => {
-    expect(COMMITTEE_EVAL_NOTE).toBe('위원회 의뢰 평가 시 원문 기한 상이 / 계획 통보 종료 5주 전, 의뢰 3주 전, 결과서 교부 2주 전');
+  it('종료일 있으면 기준일 표시 (종료 −35·−21·−14일)', () => {
+    const ev = computeStages(base, 'R2022', TODAY).find((x) => x.key === 'evaluation');
+    expect(ev?.notes).toEqual(['위원회 의뢰 평가 시 원문 기한 상이 / 계획 통보 2024.09.26.(종료 5주 전) / 의뢰 2024.10.10.(3주 전) / 교부 2024.10.17.(2주 전)']);
+  });
+  it('종료일 없으면 기존 문구만', () => {
+    expect(committeeEvalNote(null)).toBe('위원회 의뢰 평가 시 원문 기한 상이 / 계획 통보 종료 5주 전, 의뢰 3주 전, 결과서 교부 2주 전');
+    const ev = computeStages({ type: 'A' }, 'R2023', TODAY).find((x) => x.key === 'evalDoc');
+    expect(ev?.notes).toEqual([COMMITTEE_EVAL_NOTE]);
   });
   it('기한 산정에는 영향 없음 (R2022 평가 기한 = 종료일, 평가결과서 = 종료+1개월)', () => {
     const s = computeStages(base, 'R2022', TODAY);
     expect(byKey(s, 'evaluation')?.due).toBe('2024-10-31');
     expect(byKey(s, 'evalDoc')?.due).toBe('2024-11-30');
+  });
+});
+
+/* ================= R2019·R2020 착수·중간보고 ================= */
+
+describe('R2019·R2020 단계 수 (착수·중간보고 제외)', () => {
+  const keysOf = (p: ProjectInput, r: 'R2019' | 'R2020') => computeStages(p, r, TODAY).map((s) => s.key);
+  it.each(['R2019', 'R2020'] as const)('%s 내부연구: 심의·평가·평가결과서·공표 4단계', (r) => {
+    expect(keysOf({ type: 'A', endDate: '2021-10-31' }, r)).toEqual(['review', 'evaluation', 'evalDoc', 'publication']);
+  });
+  it.each(['R2019', 'R2020'] as const)('%s 위탁연구: 연구용역계약 포함 5단계', (r) => {
+    expect(keysOf({ type: 'B', endDate: '2021-10-31' }, r)).toHaveLength(5);
+  });
+  it('R2022 이후는 착수·중간보고 포함 (내부 9단계, 위탁 10단계)', () => {
+    expect(computeStages({ type: 'A', endDate: '2023-10-31' }, 'R2022', TODAY)).toHaveLength(9);
+    expect(computeStages({ type: 'B', endDate: '2026-10-31' }, 'R2025', TODAY)).toHaveLength(10);
+  });
+  it('입력값이 있으면 참고 기록으로 표시 (상태·배지 없음)', () => {
+    const p: ProjectInput = { type: 'A', endDate: '2021-10-31', reports: { kickoff: '연구통계팀-88(2021.06.10.)', interim: '' } };
+    expect(referenceRecords(p, 'R2020')).toEqual([
+      { key: 'kickoff', name: '착수보고', value: '연구통계팀-88(2021.06.10.)', label: REFERENCE_LABEL },
+    ]);
+    expect(REFERENCE_LABEL).toBe('참고 기록 / 해당 규정 없음');
+  });
+  it('입력값 없거나 R2022 이후면 참고 기록 없음', () => {
+    expect(referenceRecords({ type: 'A' }, 'R2019')).toEqual([]);
+    expect(referenceRecords({ type: 'A', reports: { kickoff: '2023.01.10.' } }, 'R2022')).toEqual([]);
   });
 });
 

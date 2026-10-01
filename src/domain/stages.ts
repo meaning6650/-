@@ -2,7 +2,7 @@
  * 단계별 기한·이행 상태 (지시서 6장)
  * E = 연구종료일. 월 단위 더하기는 말일 보정(EDATE 방식)
  */
-import { addMonths, diffDays, extractDate, formatDate, isNotApplicable, isNotDone } from './fields';
+import { addDays, addMonths, diffDays, extractDate, formatDate, isNotApplicable, isNotDone } from './fields';
 import { STAGE_REFS, type RegimeKey, type StageKey } from './regimes';
 import type { ProjectInput } from './types';
 
@@ -34,9 +34,19 @@ export type StageResult = {
   notes: string[];          // 단계별 안내 문구
 };
 
-/** R2022·R2023 제23조 위원회 의뢰 평가 안내 (안 1: 기한 산정 제외, 문구만 표시) */
+/** R2022·R2023 제23조 위원회 의뢰 평가 안내 (안 1: 기한 산정·상태 판정 제외, 문구만 표시) */
 export const COMMITTEE_EVAL_NOTE =
   '위원회 의뢰 평가 시 원문 기한 상이 / 계획 통보 종료 5주 전, 의뢰 3주 전, 결과서 교부 2주 전';
+
+/**
+ * 안내 문구에 기준일 표시 ("최소 5주 전" = 연구종료일 −35일)
+ * 종료일 없으면 기준일 없는 기존 문구
+ */
+export function committeeEvalNote(endDate: string | null | undefined): string {
+  if (!endDate) return COMMITTEE_EVAL_NOTE;
+  const d = (n: number) => formatDate(addDays(endDate, -n));
+  return `위원회 의뢰 평가 시 원문 기한 상이 / 계획 통보 ${d(35)}(종료 5주 전) / 의뢰 ${d(21)}(3주 전) / 교부 ${d(14)}(2주 전)`;
+}
 
 const OLD: RegimeKey[] = ['R2019', 'R2020'];
 
@@ -66,12 +76,14 @@ const STAGES: StageDef[] = [
   },
   {
     key: 'kickoff', no: 3, name: '착수보고', kind: '권고',
-    exists: () => true, due: () => null, noDueLabel: '-',
+    exists: (r) => !OLD.includes(r), // R2019·R2020 해당 규정 없음 → 참고 기록으로만 표시
+    due: () => null, noDueLabel: '-',
     value: (p) => p.reports?.kickoff ?? '',
   },
   {
     key: 'interim', no: 4, name: '중간보고', kind: '권고',
-    exists: () => true, due: () => null, noDueLabel: '-',
+    exists: (r) => !OLD.includes(r),
+    due: () => null, noDueLabel: '-',
     value: (p) => p.reports?.interim ?? '',
   },
   {
@@ -171,7 +183,7 @@ export function computeStages(p: ProjectInput, regime: RegimeKey | null, today: 
     const ref = refs[s.key];
     const notes: string[] = [];
     if ((regime === 'R2022' || regime === 'R2023') && (s.key === 'evaluation' || s.key === 'evalDoc')) {
-      notes.push(COMMITTEE_EVAL_NOTE);
+      notes.push(committeeEvalNote(p.endDate));
     }
     // 연구종료일이 없을 때: 기한 규정이 있는 단계는 '연구종료일 미입력' 표시
     const hasDueRule = s.due(regime, '2000-01-31', p) !== null;
@@ -189,6 +201,27 @@ export function computeStages(p: ProjectInput, regime: RegimeKey | null, today: 
       ...judged,
     };
   });
+}
+
+/* ---------- 참고 기록 (해당 규정 없는 단계의 입력값) ---------- */
+
+export type ReferenceRecord = { key: StageKey; name: string; value: string; label: string };
+
+export const REFERENCE_LABEL = '참고 기록 / 해당 규정 없음';
+
+/**
+ * R2019·R2020 과제의 착수·중간보고 입력값
+ * 단계 목록에서는 제외, 입력값이 있을 때만 목록 하단에 표시 (상태 판정·배지 없음)
+ */
+export function referenceRecords(p: ProjectInput, regime: RegimeKey | null): ReferenceRecord[] {
+  if (!regime || !OLD.includes(regime)) return [];
+  const items: [StageKey, string, string | undefined][] = [
+    ['kickoff', '착수보고', p.reports?.kickoff],
+    ['interim', '중간보고', p.reports?.interim],
+  ];
+  return items
+    .filter(([, , v]) => !!v && !!v.trim())
+    .map(([key, name, v]) => ({ key, name, value: v!.trim(), label: REFERENCE_LABEL }));
 }
 
 /* ---------- 평가 검증 ---------- */
