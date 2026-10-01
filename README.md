@@ -2,6 +2,8 @@
 
 한국건강증진개발원 건강증진연구소 / 연구과제·심의위원회 관리 웹앱 (Vite + React + TypeScript)
 
+- Firebase 프로젝트 ID·GitHub 저장소: `khepi-rms` / 배포 경로 `https://meaning6650.github.io/khepi-rms/`
+
 ## 실행
 ```
 npm ci

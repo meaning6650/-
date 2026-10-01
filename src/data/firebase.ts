@@ -39,7 +39,7 @@ export function firebase(): Services {
   if (missingConfig.length) throw new Error(`Firebase 설정 미입력 / ${missingConfig.join(', ')}`);
   const app = initializeApp(
     useEmulator
-      ? { apiKey: 'demo-key', projectId: 'demo-khepi-ledger', authDomain: 'localhost' }
+      ? { apiKey: 'demo-key', projectId: 'demo-khepi-rms', authDomain: 'localhost' }
       : config,
   );
   const auth = getAuth(app);

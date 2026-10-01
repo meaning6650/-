@@ -11,7 +11,7 @@
 ## A. Firebase 콘솔 (https://console.firebase.google.com)
 
 ### 1. 프로젝트 생성
-- [프로젝트 추가] → 이름 예: `khepi-research-ledger`
+- [프로젝트 추가] → 프로젝트 ID `khepi-rms` (확정, 완료)
 - Google 애널리틱스: 사용 안 함
 - 요금제: 기본 Spark 그대로 (결제 정보 등록 안 함)
 - 생성 후 표시되는 **프로젝트 ID** 기록 (D 회신 항목)
@@ -20,7 +20,7 @@
 - 빌드 → Authentication → [시작하기]
 - Sign-in method → **Google** → 사용 설정 → 프로젝트 지원 이메일 선택 → 저장
 - 다른 로그인 방식(이메일/비밀번호 등)은 **사용 안 함**
-- 설정 → **승인된 도메인** → [도메인 추가] → `<GitHub 계정>.github.io`
+- 설정 → **승인된 도메인** → [도메인 추가] → `meaning6650.github.io` (9단계 배포 때)
   - `localhost` 는 기본 포함 (로컬 확인용)
 
 ### 3. Firestore Database (데이터)
@@ -80,14 +80,14 @@
 - firebase-tools 는 프로젝트에 포함되어 있어 전역 설치 불필요
   ```
   npx firebase login
-  npx firebase use --add        # 1번 프로젝트 선택, 별칭(alias): default
+  # .firebaserc 에 khepi-rms 지정되어 있어 firebase use 단계 생략 가능
   npm run deploy:rules          # = firebase deploy --only firestore:rules
   ```
 - 배포 완료 메시지 확인 (`Deploy complete!`)
 - Storage 규칙(storage.rules)은 보관용 / 배포 대상 아님
 
 ### 9. 로그인 확인
-- `npm run dev` → 브라우저에서 표시 주소 접속 (예: http://localhost:5173/-/)
+- `npm run dev` → 브라우저에서 표시 주소 접속 (예: http://localhost:5173/khepi-rms/)
 - [Google 계정으로 로그인] → 5번에 등록한 계정으로 로그인
 - 정상: 상단바에 이름과 "관리자" 표시 / [관리] 화면 진입 가능
 - 다른(미등록) 계정 로그인 시 "접근 권한 없음" 표시 확인

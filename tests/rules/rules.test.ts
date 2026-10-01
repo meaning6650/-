@@ -11,7 +11,7 @@ import {
 import { addDoc, collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage';
 
-const PROJECT = 'demo-khepi-ledger';
+const PROJECT = 'demo-khepi-rms';
 const USERS = {
   admin: 'admin@khepi.or.kr',
   editor: 'editor@khepi.or.kr',
