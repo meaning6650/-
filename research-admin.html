@@ -596,6 +596,19 @@ function UserForm({user,onSave,onClose}){
   </Modal>;
 }
 
+/* ─────────── CONFIRM MODAL ─────────── */
+// window.confirm()/alert()는 카카오톡 등 인앱 브라우저에서 아무 반응 없이
+// 조용히 차단되는 경우가 있어, 삭제 등 파괴적인 동작은 이 모달로 확인받는다.
+function ConfirmModal({title,message,onConfirm,onClose}){
+  return <Modal title={title||'확인'} onClose={onClose}>
+    <div style={{fontSize:14,lineHeight:1.6,color:'#333'}}>{message}</div>
+    <div className="modal-footer">
+      <button className="btn btn-secondary" onClick={onClose}>취소</button>
+      <button className="btn btn-danger" onClick={()=>{onConfirm();onClose();}}>삭제</button>
+    </div>
+  </Modal>;
+}
+
 /* ─────────── PRIV WARNING MODAL ─────────── */
 function PrivWarningModal({onClose}){
   return <Modal title="안내" onClose={onClose}>
@@ -770,9 +783,10 @@ function SettingsPanel({data,onChange}){
   const [showAll,setShowAll]=useState(false);
   const [pf,setPf]=useState({old:'',n1:'',n2:''});
   const [pm,setPm]=useState('');
+  const [confirmDel,setConfirmDel]=useState(null);
   function addUser(f){onChange({...data,users:[...data.users,{id:uid(),...f}]});setUm(null)}
   function editUser(f){onChange({...data,users:data.users.map(u=>u.id===um.user.id?{...u,...f}:u)});setUm(null)}
-  function delUser(id){if(!confirm('담당자를 삭제하시겠습니까?'))return;onChange({...data,users:data.users.filter(u=>u.id!==id)})}
+  function delUser(id){onChange({...data,users:data.users.filter(u=>u.id!==id)})}
   function chgPwd(){
     if(pf.old!==data.adminPwd){setPm('현재 비밀번호가 올바르지 않습니다.');return}
     if(pf.n1!==pf.n2){setPm('새 비밀번호가 일치하지 않습니다.');return}
@@ -807,7 +821,7 @@ function SettingsPanel({data,onChange}){
               <td><code style={{background:'#f4f4f0',padding:'2px 6px',borderRadius:4,fontSize:12}}>{u.password}</code></td>
               <td><div style={{display:'flex',gap:5,justifyContent:'center'}}>
                 <button className="btn btn-secondary" style={{padding:'3px 8px'}} onClick={()=>setUm({t:'edit',user:u})}>수정</button>
-                <button className="btn btn-danger" style={{padding:'3px 8px'}} onClick={()=>delUser(u.id)}>삭제</button>
+                <button className="btn btn-danger" style={{padding:'3px 8px'}} onClick={()=>setConfirmDel(u)}>삭제</button>
               </div></td>
             </tr>)}
           </tbody>
@@ -831,6 +845,7 @@ function SettingsPanel({data,onChange}){
     </div>
     {um?.t==='add'&&<UserForm onSave={addUser} onClose={()=>setUm(null)}/>}
     {um?.t==='edit'&&<UserForm user={um.user} onSave={editUser} onClose={()=>setUm(null)}/>}
+    {confirmDel&&<ConfirmModal title="담당자 삭제" message={`"${confirmDel.name}" 담당자를 삭제하시겠습니까?`} onConfirm={()=>delUser(confirmDel.id)} onClose={()=>setConfirmDel(null)}/>}
   </div>;
 }
 
@@ -997,6 +1012,7 @@ function AdminDash({data,onChange,onLogout}){
   const [selId,setSelId]=useState(data.projects[0]?.id||null);
   const [projModal,setProjModal]=useState(null);
   const [showNotif,setShowNotif]=useState(false);
+  const [confirmDel,setConfirmDel]=useState(null);
 
   const selProj=data.projects.find(p=>p.id===selId)||null;
   const notifs=useMemo(()=>getNotifs(data.projects),[data.projects]);
@@ -1029,7 +1045,6 @@ function AdminDash({data,onChange,onLogout}){
     setProjModal(null);
   }
   function delProj(id){
-    if(!confirm('과제를 삭제하시겠습니까?'))return;
     const ps=data.projects.filter(p=>p.id!==id);
     onChange({...data,projects:ps});
     if(selId===id)setSelId(ps[0]?.id||null);
@@ -1082,7 +1097,7 @@ function AdminDash({data,onChange,onLogout}){
                 </div>
                 {selProj&&<div style={{display:'flex',gap:5}}>
                   <button className="btn btn-secondary" onClick={()=>setProjModal({t:'edit',proj:selProj})}><i className="ti ti-edit"/></button>
-                  <button className="btn btn-danger" onClick={()=>delProj(selProj.id)}><i className="ti ti-trash"/></button>
+                  <button className="btn btn-danger" onClick={()=>setConfirmDel(selProj)}><i className="ti ti-trash"/></button>
                 </div>}
               </div>
               <ChecklistView proj={selProj} onUpdate={updProj} isAdmin={true}/>
@@ -1106,6 +1121,7 @@ function AdminDash({data,onChange,onLogout}){
     </div>
     {projModal?.t==='add'&&<ProjectForm users={data.users} onSave={addProj} onClose={()=>setProjModal(null)}/>}
     {projModal?.t==='edit'&&<ProjectForm proj={projModal.proj} users={data.users} onSave={editProj} onClose={()=>setProjModal(null)}/>}
+    {confirmDel&&<ConfirmModal title="과제 삭제" message={`"${confirmDel.name}" 과제를 삭제하시겠습니까? 체크리스트 등 모든 데이터가 함께 삭제됩니다.`} onConfirm={()=>delProj(confirmDel.id)} onClose={()=>setConfirmDel(null)}/>}
   </div>;
 }
 
